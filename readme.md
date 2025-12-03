@@ -1,5 +1,7 @@
 # Real-Time Chat System Low Level Design (LLD)
 
+## Live link: https://miniteamchat.vercel.app
+
 ## 1. System Overview
 
 A complete real-time chat system supporting:
