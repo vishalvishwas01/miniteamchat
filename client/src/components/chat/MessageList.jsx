@@ -174,7 +174,7 @@ export default function MessageList({ channelId }) {
 
       {grouped.length === 0 && (
         <div className="text-center text-slate-400 mt-12">
-          No messages yet. Say hello 👋
+          No messages yet. Say hello
         </div>
       )}
 
