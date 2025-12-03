@@ -6,18 +6,17 @@ const baseURL = import.meta.env.VITE_SERVER_URL || "http://localhost:4000";
 
 const instance = axios.create({
   baseURL: `${baseURL}/api`,
-  withCredentials: false
+  withCredentials: false,
 });
 
-// Attach token
 instance.interceptors.request.use((config) => {
   const state = store.getState();
   const token = state.auth?.token;
-  if (token) config.headers = { ...config.headers, Authorization: `Bearer ${token}` };
+  if (token)
+    config.headers = { ...config.headers, Authorization: `Bearer ${token}` };
   return config;
 });
 
-// Response error handling (401 -> logout)
 instance.interceptors.response.use(
   (res) => res,
   (err) => {

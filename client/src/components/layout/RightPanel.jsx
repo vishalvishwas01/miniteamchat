@@ -1,4 +1,4 @@
-// client/src/components/layout/RightPanel.jsx
+
 import React, { useEffect, useState, useCallback } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { AvatarFromName } from "../../utils/avatar";
@@ -8,7 +8,6 @@ import {
   rejectRequestThunk,
   fetchChannelsThunk,
 } from "../../redux/slices/channelsSlice";
-import socketClient from "../../lib/socketClient";
 
 export default function RightPanel() {
   const dispatch = useDispatch();
@@ -17,7 +16,6 @@ export default function RightPanel() {
   const channel = channelsList.find((c) => String(c._id) === String(currentId)) || null;
   const currentUser = useSelector((s) => s.auth.user);
   const myId = currentUser?._id || currentUser?.id;
-  // presence map expected shape: { [userId]: { online: true/false } }
   const presenceMap = useSelector((s) => s.presence?.byId || {});
   const [members, setMembers] = useState([]);
   const [pending, setPending] = useState([]);

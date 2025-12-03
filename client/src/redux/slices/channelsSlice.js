@@ -1,4 +1,4 @@
-// client/src/redux/slices/channelsSlice.js
+
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
   fetchChannels as fetchChannelsApi,
@@ -11,16 +11,11 @@ import {
   deleteChannelApi,
 } from "../../api/authApi";
 
-/**
- * Thunks
- */
-
-// Fetch channels that the current user is a member of
 export const fetchChannelsThunk = createAsyncThunk(
   "channels/fetch",
   async () => {
     const res = await fetchChannelsApi({ mine: true });
-    // res should be { ok: true, channels: [...] }
+    
     return res.channels || [];
   }
 );
@@ -45,7 +40,7 @@ export const requestJoinThunk = createAsyncThunk(
   "channels/requestJoin",
   async (channelId) => {
     const res = await requestJoinChannelApi(channelId);
-    // server returns { ok: true, status: 'pending' }
+    
     return { channelId, status: res.status || "pending" };
   }
 );
@@ -54,7 +49,7 @@ export const approveRequestThunk = createAsyncThunk(
   "channels/approveRequest",
   async ({ channelId, userId }) => {
     const res = await approveJoinRequestApi(channelId, userId);
-    // return the updated channel document (server responds with channel)
+    
     return { channel: res.channel, channelId, userId };
   }
 );
@@ -71,7 +66,7 @@ export const leaveChannelThunk = createAsyncThunk(
   "channels/leaveChannel",
   async (channelId) => {
     const res = await leaveChannelApi(channelId);
-    // server returns { ok: true, channel: <channelDoc> } or similar
+    
     return channelId;
   }
 );
@@ -84,16 +79,13 @@ export const deleteChannelThunk = createAsyncThunk(
   }
 );
 
-/**
- * Slice
- */
 const slice = createSlice({
   name: "channels",
   initialState: {
-    list: [], // channels where the current user is member
+    list: [], 
     currentChannelId: null,
-    searchResults: [], // results from channel search
-    incomingRequests: [], // [{ channelId, channelName, requester: { _id, name } }]
+    searchResults: [], 
+    incomingRequests: [], 
     status: "idle",
     error: null,
   },
@@ -102,7 +94,7 @@ const slice = createSlice({
       state.currentChannelId = action.payload;
     },
     addChannel(state, action) {
-      // new channel (likely created by this user)
+      
       state.list.unshift(action.payload);
     },
     removeChannel(state, action) {
@@ -116,12 +108,12 @@ const slice = createSlice({
       if (idx !== -1) state.list[idx].members = members;
     },
 
-    // Search results setter (used by ChannelSearch)
+    
     setSearchResults(state, action) {
       state.searchResults = action.payload;
     },
 
-    // Incoming join requests (creator receives these via socket)
+    
     addIncomingRequest(state, action) {
       const r = action.payload;
       const exists = state.incomingRequests.find(
@@ -141,7 +133,7 @@ const slice = createSlice({
         (r) => !(String(r.channelId) === String(channelId) && String(r.requester?._id) === String(userId))
       );
     },
-    // optional: clear search results
+    
     clearSearchResults(state) {
       state.searchResults = [];
     },
@@ -165,7 +157,7 @@ const slice = createSlice({
     });
 
     builder.addCase(searchChannelsThunk.fulfilled, (state, action) => {
-      // attach joinStatus default for UI convenience
+      
       state.searchResults = (action.payload || []).map((c) => ({ ...c, joinStatus: c.joinStatus || "join" }));
     });
 
@@ -177,12 +169,12 @@ const slice = createSlice({
     });
 
     builder.addCase(approveRequestThunk.fulfilled, (state, action) => {
-      // When creator approves, remove incoming request from list
+      
       const { channelId, userId } = action.payload;
       state.incomingRequests = state.incomingRequests.filter(
         (r) => !(String(r.channelId) === String(channelId) && String(r.requester?._id) === String(userId))
       );
-      // Note: the approved user will fetch channels and see this channel in their sidebar.
+      
     });
 
     builder.addCase(rejectRequestThunk.fulfilled, (state, action) => {
@@ -190,7 +182,7 @@ const slice = createSlice({
       state.incomingRequests = state.incomingRequests.filter(
         (r) => !(String(r.channelId) === String(channelId) && String(r.requester?._id) === String(userId))
       );
-      // Optionally update searchResults for the requester via socket handler
+      
     });
 
     builder.addCase(leaveChannelThunk.fulfilled, (state, action) => {

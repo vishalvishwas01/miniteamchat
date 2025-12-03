@@ -1,4 +1,3 @@
-// src/components/chat/MessageInput.jsx
 import React, { useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import socketClient from "../../lib/socketClient";
@@ -22,7 +21,6 @@ export default function MessageInput({ channelId, onSend }) {
     const clientId = genClientId();
     const now = new Date().toISOString();
 
-    // optimistic message payload (use clientId as temp _id)
     const optimistic = {
       _id: clientId,
       channelId,
@@ -34,36 +32,28 @@ export default function MessageInput({ channelId, onSend }) {
       temp: true,
     };
 
-    // add optimistic message to store
     dispatch(addOptimisticMessage(optimistic));
 
-    // emit via socket with clientId (server will persist and broadcast back with clientId)
     socketClient.onReady((sock) => {
       try {
-        sock.emit(
-          "message:new",
-          { channelId, text, clientId },
-          (ack) => {
-            if (ack && ack.ok) {
-              // server will broadcast message:received which our reducer handles.
-            } else if (ack && ack.error) {
-              console.warn("socket send error", ack.error);
-            }
+        sock.emit("message:new", { channelId, text, clientId }, (ack) => {
+          if (ack && ack.ok) {
+          } else if (ack && ack.error) {
+            console.warn("socket send error", ack.error);
           }
-        );
+        });
 
-        // immediately tell server we stopped typing (clear indicator)
         try {
-          sock.emit("typing:stop", { channelId, userId: user?._id || user?.id });
-        } catch (e) {
-          // ignore
-        }
+          sock.emit("typing:stop", {
+            channelId,
+            userId: user?._id || user?.id,
+          });
+        } catch (e) {}
       } catch (e) {
         console.warn("emit error", e);
       }
     });
 
-    // optional callback for parent
     if (typeof onSend === "function") onSend(optimistic);
 
     setText("");
@@ -80,10 +70,8 @@ export default function MessageInput({ channelId, onSend }) {
   function handleChange(e) {
     setText(e.target.value);
     try {
-      onInput(); // notify typing hook
-    } catch (err) {
-      // safe noop if hook not ready
-    }
+      onInput();
+    } catch (err) {}
   }
 
   return (

@@ -1,4 +1,3 @@
-// client/src/redux/slices/authSlice.js
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import * as api from "../../api/authApi";
 
@@ -16,7 +15,7 @@ const initialState = {
   user: persisted?.user || null,
   token: persisted?.token || null,
   status: "idle",
-  error: null
+  error: null,
 };
 
 export const signupThunk = createAsyncThunk("auth/signup", async (payload) => {
@@ -33,18 +32,19 @@ export const loginThunk = createAsyncThunk("auth/login", async (payload) => {
   return res;
 });
 
-// Optional: verify token on app start (calls /auth/me). Not mandatory, but helpful.
-export const verifyMe = createAsyncThunk("auth/verifyMe", async (_, { getState }) => {
-  const res = await api.me();
-  return res.user;
-});
+export const verifyMe = createAsyncThunk(
+  "auth/verifyMe",
+  async (_, { getState }) => {
+    const res = await api.me();
+    return res.user;
+  }
+);
 
 const slice = createSlice({
   name: "auth",
   initialState,
   reducers: {
     loadFromLocal(state) {
-      // This reducer restores persisted auth from localStorage
       const persisted = (() => {
         try {
           const raw = localStorage.getItem("chat_auth");
@@ -54,7 +54,7 @@ const slice = createSlice({
           return null;
         }
       })();
-      
+
       if (persisted) {
         state.user = persisted.user;
         state.token = persisted.token;
@@ -68,8 +68,11 @@ const slice = createSlice({
     saveAuth(state, action) {
       state.user = action.payload.user;
       state.token = action.payload.token;
-      localStorage.setItem("chat_auth", JSON.stringify({ user: state.user, token: state.token }));
-    }
+      localStorage.setItem(
+        "chat_auth",
+        JSON.stringify({ user: state.user, token: state.token })
+      );
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -77,26 +80,37 @@ const slice = createSlice({
         console.log("[signupThunk fulfilled] Payload:", action.payload);
         state.user = action.payload.user;
         state.token = action.payload.token;
-        console.log("[signupThunk fulfilled] Saved token to state:", state.token);
-        localStorage.setItem("chat_auth", JSON.stringify({ user: state.user, token: state.token }));
+        console.log(
+          "[signupThunk fulfilled] Saved token to state:",
+          state.token
+        );
+        localStorage.setItem(
+          "chat_auth",
+          JSON.stringify({ user: state.user, token: state.token })
+        );
       })
       .addCase(loginThunk.fulfilled, (state, action) => {
         console.log("[loginThunk fulfilled] Payload:", action.payload);
         state.user = action.payload.user;
         state.token = action.payload.token;
-        console.log("[loginThunk fulfilled] Saved token to state:", state.token);
-        localStorage.setItem("chat_auth", JSON.stringify({ user: state.user, token: state.token }));
+        console.log(
+          "[loginThunk fulfilled] Saved token to state:",
+          state.token
+        );
+        localStorage.setItem(
+          "chat_auth",
+          JSON.stringify({ user: state.user, token: state.token })
+        );
       })
       .addCase(verifyMe.fulfilled, (state, action) => {
         state.user = action.payload;
       })
       .addCase(verifyMe.rejected, (state) => {
-        // If verify fails, clear stored auth to avoid repeated 401 cycles
         state.user = null;
         state.token = null;
         localStorage.removeItem("chat_auth");
       });
-  }
+  },
 });
 
 export const { loadFromLocal, logout, saveAuth } = slice.actions;

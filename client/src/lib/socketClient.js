@@ -1,4 +1,3 @@
-// client/src/lib/socketClient.js
 import { io } from "socket.io-client";
 
 let socket = null;
@@ -15,7 +14,6 @@ function createSocket(token) {
 
   s.on("connect", () => {
     console.log("[socketClient] connected", s.id);
-    // run queued ready callbacks
     readyCallbacks.forEach((cb) => {
       try { cb(s); } catch (e) { console.error(e); }
     });
@@ -36,7 +34,6 @@ function createSocket(token) {
 const socketClient = {
   init(token) {
     if (!token) {
-      // if token removed, disconnect existing
       if (socket) {
         socket.disconnect();
         socket = null;
@@ -45,10 +42,9 @@ const socketClient = {
       return null;
     }
 
-    // if token changed or socket not created, create a new one
     if (!socket || currentToken !== token) {
       if (socket) {
-        try { socket.disconnect(); } catch (e) { /* ignore */ }
+        try { socket.disconnect(); } catch (e) {}
         socket = null;
       }
       currentToken = token;
@@ -62,18 +58,16 @@ const socketClient = {
   },
 
   onReady(cb) {
-    // if already connected, run immediately
     if (socket && socket.connected) {
       try { cb(socket); } catch (e) { console.error(e); }
       return;
     }
-    // otherwise push into queue to run after connect
     readyCallbacks.push(cb);
   },
 
   disconnect() {
     if (socket) {
-      try { socket.disconnect(); } catch (e) { /* ignore */ }
+      try { socket.disconnect(); } catch (e) { }
       socket = null;
       currentToken = null;
     }

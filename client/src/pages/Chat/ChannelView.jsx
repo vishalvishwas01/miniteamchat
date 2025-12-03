@@ -1,4 +1,4 @@
-// src/pages/Chat/ChannelView.jsx
+
 import React, { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import MessageList from "../../components/chat/MessageList";

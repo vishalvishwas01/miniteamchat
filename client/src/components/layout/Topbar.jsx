@@ -1,4 +1,3 @@
-// client/src/components/layout/Topbar.jsx
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -21,38 +20,36 @@ export default function Topbar() {
   const user = useSelector((s) => s.auth.user);
   const dispatch = useDispatch();
 
-  if (!channel) return <div className="h-16 bg-white border-b pl-4 flex justify-start items-center">
-    <ChannelSearch />
-  </div>;
+  if (!channel)
+    return (
+      <div className="h-16 bg-white border-b pl-4 flex justify-start items-center">
+        <ChannelSearch />
+      </div>
+    );
 
   const isCreator = String(channel.createdBy) === String(user?.id || user?._id);
 
-  // inside Topbar.jsx — replace onLeave with this
   async function onLeave() {
     if (!currentId) return;
     if (!confirm("Leave this channel?")) return;
 
     try {
-      // optimistic UI: remove locally immediately so sidebar updates without delay
       dispatch(removeChannel(currentId));
       dispatch(setCurrentChannel(null));
 
-      // ensure socket leaves the room immediately
       const s = socketClient.get();
       if (s && s.connected) {
         s.emit("channel:leave", { channelId: currentId });
       }
 
-      // call API to persist the leave
       await dispatch(leaveChannelThunk(currentId)).unwrap();
 
-      // refresh channel list from server for full consistency (optional)
       dispatch(fetchChannelsThunk());
-      // navigate away to a safe route
+
       navigate("/app");
     } catch (err) {
       console.error("leave failed", err);
-      // If API failed, we should re-load channels to return to correct state
+
       dispatch(fetchChannelsThunk());
       const msg =
         err?.message ||
@@ -67,7 +64,7 @@ export default function Topbar() {
     if (!confirm("Delete this channel? This cannot be undone.")) return;
     try {
       const result = await dispatch(deleteChannelThunk(currentId)).unwrap();
-      // server will broadcast channel:deleted; remove from local store just in case
+
       dispatch(removeChannel(currentId));
     } catch (err) {
       console.error("delete failed", err);
@@ -84,13 +81,15 @@ export default function Topbar() {
         </div>
       </div>
       <div className="flex items-center gap-3">
-         <ChannelSearch />
-        {!isCreator && <button
-          onClick={onLeave}
-          className="px-3 py-1 rounded hover:bg-slate-100 cursor-pointer"
-        >
-          Leave
-        </button>}
+        <ChannelSearch />
+        {!isCreator && (
+          <button
+            onClick={onLeave}
+            className="px-3 py-1 rounded hover:bg-slate-100 cursor-pointer"
+          >
+            Leave
+          </button>
+        )}
         {isCreator && (
           <button
             onClick={onDelete}

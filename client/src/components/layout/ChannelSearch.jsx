@@ -1,4 +1,3 @@
-// client/src/components/layout/ChannelSearch.jsx
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { searchChannelsThunk, requestJoinThunk } from "../../redux/slices/channelsSlice";

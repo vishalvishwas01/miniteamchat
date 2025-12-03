@@ -1,4 +1,4 @@
-// client/src/redux/slices/messagesSlice.js
+
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
   fetchMessages as apiFetchMessages,
@@ -7,24 +7,18 @@ import {
   deleteMessage as apiDeleteMessage,
 } from "../../api/authApi";
 
-// helper to keep legacy `list` key used by some components in sync with internal `items`
+
 const _syncList = (chState) => {
   if (!chState) return;
   chState.list = chState.items;
 };
 
-/**
- * fetchMessagesThunk
- * params: { channelId, limit = 30, before = null }
- * - before: messageId or ISO timestamp to page before that point
- * Server returns messages in chronological order (oldest -> newest).
- */
 export const fetchMessagesThunk = createAsyncThunk(
   "messages/fetch",
   async ({ channelId, limit = 30, before = null }, { rejectWithValue }) => {
     try {
       const res = await apiFetchMessages({ channelId, limit, before });
-      // expect res.messages and res.hasMore
+      
       return { channelId, messages: res.messages || [], hasMore: !!res.hasMore };
     } catch (err) {
       return rejectWithValue(err.response?.data || { message: err.message });
@@ -32,7 +26,7 @@ export const fetchMessagesThunk = createAsyncThunk(
   }
 );
 
-// backward-compatible alias expected by components
+
 export const loadMessagesThunk = fetchMessagesThunk;
 export const postMessageThunk = createAsyncThunk(
   "messages/post",
@@ -74,12 +68,12 @@ const slice = createSlice({
   name: "messages",
   initialState: {
     byChannel: {
-      // [channelId]: { items: [], loading: false, hasMore: true }
+      
     },
     status: "idle",
   },
   reducers: {
-    // optimistic add: msg must include _id (clientId used as temp id) and channelId
+    
     addOptimisticMessage(state, action) {
       const msg = action.payload;
       const channelId = String(msg.channelId || (msg.channelId?._id ?? ""));
@@ -90,25 +84,25 @@ const slice = createSlice({
       _syncList(state.byChannel[channelId]);
     },
 
-    // message received from socket (replace optimistic if clientId matches)
+    
     receiveMessage(state, action) {
       const msg = action.payload;
       const channelId = msg.channelId?._id ? String(msg.channelId._id) : String(msg.channelId);
       if (!channelId) return;
       if (!state.byChannel[channelId]) state.byChannel[channelId] = { items: [], loading: false, hasMore: true };
 
-      // If server message includes a clientId, find and replace optimistic message
+      
       if (msg.clientId) {
         const tempIdx = state.byChannel[channelId].items.findIndex((m) => String(m._id) === String(msg.clientId));
         if (tempIdx !== -1) {
-          // replace temp message with real one
+          
           state.byChannel[channelId].items[tempIdx] = msg;
             _syncList(state.byChannel[channelId]);
           return;
         }
       }
 
-      // dedupe by _id then push to end (newest)
+      
       const exists = state.byChannel[channelId].items.some((m) => String(m._id) === String(msg._id));
       if (!exists) state.byChannel[channelId].items.push(msg);
       _syncList(state.byChannel[channelId]);
@@ -129,19 +123,19 @@ const slice = createSlice({
       const chKey = String(channelId);
       const ch = state.byChannel[chKey];
       if (!ch) return;
-      // mark deleted flag if you prefer soft-delete, else remove:
-      // ch.items = ch.items.filter(m => String(m._id) !== String(messageId));
+      
+      
       const idx = ch.items.findIndex((m) => String(m._id) === String(messageId));
       if (idx !== -1) ch.items.splice(idx, 1);
       _syncList(ch);
     },
 
-    // prependMessages kept as helper if UI prefers explicit action
+    
     prependMessages(state, action) {
       const { channelId, messages } = action.payload;
       const ch = String(channelId);
       if (!state.byChannel[ch]) state.byChannel[ch] = { items: [], loading: false, hasMore: true };
-      // messages are expected oldest->newest; avoid duplicates
+      
       const existingIds = new Set(state.byChannel[ch].items.map((m) => String(m._id)));
       const toAdd = messages.filter((m) => !existingIds.has(String(m._id)));
       state.byChannel[ch].items = [...toAdd, ...state.byChannel[ch].items];
@@ -169,17 +163,17 @@ const slice = createSlice({
         const ch = String(channelId);
         state.byChannel[ch] = state.byChannel[ch] || { items: [], loading: false, hasMore: true };
 
-        // server returns messages oldest->newest. We want to prepend older pages when 'before' was used,
-        // and for initial page (no before) we will set items = messages (or merge).
+        
+        
         const arg = action.meta.arg || {};
-        const isPagingOlder = !!arg.before; // if before provided, this is loading older messages
+        const isPagingOlder = !!arg.before; 
         if (isPagingOlder) {
-          // prepend older messages (avoid duplicates)
+          
           const existingIds = new Set(state.byChannel[ch].items.map((m) => String(m._id)));
           const toAdd = (messages || []).filter((m) => !existingIds.has(String(m._id)));
           state.byChannel[ch].items = [...toAdd, ...state.byChannel[ch].items];
         } else {
-          // initial load or refresh - replace list with messages (but keep any newer socket-received messages appended later)
+          
           state.byChannel[ch].items = [...(messages || [])];
         }
 
@@ -196,7 +190,7 @@ const slice = createSlice({
         _syncList(state.byChannel[ch]);
       })
 
-      // postMessageThunk: server returns new message — append if missing
+      
       .addCase(postMessageThunk.fulfilled, (state, action) => {
         const msg = action.payload;
         const ch = String(msg.channelId);

@@ -1,4 +1,3 @@
-// src/components/layout/Sidebar.jsx
 import React, { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
@@ -31,7 +30,6 @@ export default function Sidebar() {
 
   function onLogout() {
     try {
-      // disconnect socket so server receives 'disconnect' and broadcasts presence:update(false)
       socketClient.disconnect();
     } catch (e) {
       console.warn("socket disconnect error", e);

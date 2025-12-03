@@ -13,7 +13,6 @@ async function start() {
 
   const server = http.createServer(app);
 
-  // initialize socket.io and pass the HTTP server
   initSocket(server);
 
   server.listen(PORT, () => {

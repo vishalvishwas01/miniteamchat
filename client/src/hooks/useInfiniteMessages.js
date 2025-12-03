@@ -3,13 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchMessagesThunk, prependMessages } from "../redux/slices/messagesSlice";
 import * as api from "../api/authApi";
 
-/**
- * useInfiniteMessages(channelId)
- * - fetch initial messages by dispatching fetchMessagesThunk
- * - provides loadMore(before) to load older messages
- *
- * This is a light helper; you can expand with intersection observer for scrollup.
- */
 export function useInfiniteMessages(channelId) {
   const dispatch = useDispatch();
   const state = useSelector((s) => s.messages.byChannel?.[String(channelId)]?.items || []);
@@ -23,7 +16,7 @@ export function useInfiniteMessages(channelId) {
 
   const loadMore = useCallback(
     async (beforeMessageId, limit = 30) => {
-      // server supports before param (messageId or ISO)
+      
       const res = await api.fetchMessages({ channelId, before: beforeMessageId, limit });
       if (res?.messages?.length) {
         dispatch(prependMessages({ channelId, messages: res.messages }));

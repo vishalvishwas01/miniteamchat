@@ -1,9 +1,5 @@
 import { verifyToken } from "../utils/jwt.js";
 
-/**
- * Attach req.userId when a valid Bearer token is present.
- * If no token provided, next() still runs. Use route-level checks if needed.
- */
 export function optionalAuth(req, res, next) {
   const header = req.headers.authorization;
   if (!header) return next();
@@ -15,9 +11,6 @@ export function optionalAuth(req, res, next) {
   return next();
 }
 
-/**
- * Require authentication, otherwise 401.
- */
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization;
   if (!header) {

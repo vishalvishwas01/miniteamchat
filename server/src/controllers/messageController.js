@@ -1,14 +1,10 @@
-// src/controllers/messageController.js
+
 import Message from "../models/Message.js";
 import Channel from "../models/Channel.js";
 import mongoose from "mongoose";
-import { getIO } from "../sockets/index.js"; // <<< important
+import { getIO } from "../sockets/index.js"; 
 
-/**
- * POST /api/messages
- * body: { channelId, text, attachments? }
- * Creates message and broadcasts via Socket.IO if available.
- */
+
 export async function createMessage(req, res, next) {
   try {
     const { channelId, text, attachments, clientId } = req.body;
@@ -27,7 +23,7 @@ export async function createMessage(req, res, next) {
       clientId: clientId || null
     });
 
-    // populate sender name
+    
     const populated = await message.populate({ path: "senderId", select: "name" });
     const out = {
       _id: populated._id,
@@ -42,7 +38,7 @@ export async function createMessage(req, res, next) {
       deleted: populated.deleted
     };
 
-    // Broadcast via socket if available
+    
     try {
       const io = getIO();
       io.to(`channel_${channelId}`).emit("message:received", out);
@@ -57,10 +53,7 @@ export async function createMessage(req, res, next) {
   }
 }
 
-/**
- * GET /api/messages
- * same as before (pagination)
- */
+
 export async function listMessages(req, res, next) {
   try {
     const { channelId, before, limit: qLimit } = req.query;
@@ -72,7 +65,7 @@ export async function listMessages(req, res, next) {
 
     const q = { channelId: new mongoose.Types.ObjectId(channelId), deleted: false };
 
-    // If 'before' provided, interpret as messageId or ISO date
+    
     if (before) {
       if (/^[0-9a-fA-F]{24}$/.test(before)) {
         const ref = await Message.findById(before).select("createdAt").lean();
@@ -88,10 +81,10 @@ export async function listMessages(req, res, next) {
       }
     }
 
-    // fetch newest-first, then reverse to chronological
+    
     const docs = await Message.find(q)
       .sort({ createdAt: -1 })
-      .limit(limit + 1) // fetch one extra to detect hasMore
+      .limit(limit + 1) 
       .populate({ path: "senderId", select: "name" })
       .lean();
 
@@ -118,10 +111,7 @@ export async function listMessages(req, res, next) {
   }
 }
 
-/**
- * PATCH /api/messages/:id
- * Edit via REST and broadcast
- */
+
 export async function editMessage(req, res, next) {
   try {
     const { id } = req.params;
@@ -150,10 +140,7 @@ export async function editMessage(req, res, next) {
   }
 }
 
-/**
- * DELETE /api/messages/:id
- * Soft-delete via REST and broadcast
- */
+
 export async function deleteMessage(req, res, next) {
   try {
     const { id } = req.params;

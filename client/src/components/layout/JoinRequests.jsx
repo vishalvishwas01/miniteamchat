@@ -1,4 +1,4 @@
-// client/src/components/layout/JoinRequests.jsx
+
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { approveRequestThunk, rejectRequestThunk, markRequestApproved, removeIncomingRequest } from "../../redux/slices/channelsSlice";

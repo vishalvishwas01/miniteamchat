@@ -1,38 +1,16 @@
-// server/src/sockets/index.js
 import { Server } from "socket.io";
 import { verifyToken } from "../utils/jwt.js";
 import Message from "../models/Message.js";
 import Channel from "../models/Channel.js";
 
-/**
- * Socket.IO server module
- *
- * Exports:
- *  - initSocket(httpServer) : initializes io
- *  - getIO()                : returns io (throws if not initialized)
- *  - emitToUserSocket(userId, event, payload) : emit event to all sockets of a user
- *
- * Behavior:
- *  - Tracks userSockets: Map(userId -> Set(socketId))
- *  - Emits presence:update { userId, online: true|false } when a user's first socket connects
- *    and when their last socket disconnects.
- */
+let io = null;
 
-let io = null; // module-level reference to Socket.IO server
-
-// Map userId (string) -> Set(socketId)
 const userSockets = new Map();
-
-/* ----------------- helpers ----------------- */
 
 function getKey(uid) {
   return uid == null ? null : String(uid);
 }
 
-/**
- * Register socket for a user. If this is the first socket for the user,
- * broadcast presence:update (online: true).
- */
 function registerUserSocket(userId, socketId) {
   if (!userId) return;
   const key = getKey(userId);
@@ -46,9 +24,6 @@ function registerUserSocket(userId, socketId) {
   }
 }
 
-/**
- * Unregister socket for a user. If that was the last socket, broadcast presence:update (online: false).
- */
 function unregisterUserSocket(userId, socketId) {
   if (!userId) return;
   const key = getKey(userId);
@@ -63,10 +38,6 @@ function unregisterUserSocket(userId, socketId) {
   }
 }
 
-/**
- * Emit event to all connected sockets of a given userId.
- * Returns number of emit attempts performed (0 if user not connected).
- */
 function emitToUserSocket(userId, event, payload) {
   if (!io || !userId) return 0;
   const key = getKey(userId);
@@ -80,47 +51,44 @@ function emitToUserSocket(userId, event, payload) {
         sock.emit(event, payload);
         sent++;
       } catch (err) {
-        console.warn("[emitToUserSocket] failed to emit to", sid, err?.message || err);
+        console.warn(
+          "[emitToUserSocket] failed to emit to",
+          sid,
+          err?.message || err
+        );
       }
     }
   }
   return sent;
 }
 
-/**
- * Broadcast presence update globally.
- * You can change this to emit only to certain rooms if you want presence scoped.
- */
 function emitPresenceUpdate(userId, online) {
   try {
     if (!io) return;
     const payload = { userId: String(userId), online: !!online };
     io.emit("presence:update", payload);
-    console.log(`[presence] ${payload.userId} => ${payload.online ? "online" : "offline"}`);
+    console.log(
+      `[presence] ${payload.userId} => ${payload.online ? "online" : "offline"}`
+    );
   } catch (err) {
     console.warn("emitPresenceUpdate failed", err?.message || err);
   }
 }
 
-/* ----------------- exported API ----------------- */
-
-/**
- * Initialize Socket.IO server with optional options.
- * httpServer: Node HTTP/S server instance (required)
- * options: { corsOrigin }
- */
 export function initSocket(httpServer, options = {}) {
-  if (io) return io; // avoid double-init
+  if (io) return io;
 
   io = new Server(httpServer, {
     cors: {
-      origin: options.corsOrigin || process.env.CLIENT_ORIGIN || "http://localhost:5173",
+      origin:
+        options.corsOrigin ||
+        process.env.CLIENT_ORIGIN ||
+        "http://localhost:5173",
       methods: ["GET", "POST"],
       credentials: true,
     },
   });
 
-  // handshake auth middleware: populate socket.userId when token present
   io.use((socket, next) => {
     try {
       const token = socket.handshake?.auth?.token;
@@ -131,7 +99,6 @@ export function initSocket(httpServer, options = {}) {
       socket.userName = payload.name || payload.username || null;
       return next();
     } catch (err) {
-      // don't block connection on auth error; allow anonymous sockets if your app supports it
       console.error("[socket auth] error:", err?.message || err);
       return next();
     }
@@ -141,51 +108,59 @@ export function initSocket(httpServer, options = {}) {
     const socketId = socket.id;
     const userId = socket.userId;
 
-    console.log("Socket connected:", socketId, "userId:", userId || "anonymous");
+    console.log(
+      "Socket connected:",
+      socketId,
+      "userId:",
+      userId || "anonymous"
+    );
 
-    // register for presence tracking
     if (userId) {
       registerUserSocket(userId, socketId);
     }
 
-    // --- channel join ---
     socket.on("channel:join", async ({ channelId } = {}) => {
       if (!channelId) return;
       const room = getChannelRoom(channelId);
       socket.join(room);
-      console.log(`[socket] ${socketId} joined ${room} userId=${socket.userId || "anon"}`);
+      console.log(
+        `[socket] ${socketId} joined ${room} userId=${socket.userId || "anon"}`
+      );
 
       try {
-        // Optional: add to Channel.members if you want join to persist automatically.
-        // If you use join-request workflow, you may skip this.
         if (socket.userId) {
           const ch = await Channel.findById(channelId);
           if (ch) {
-            const present = (ch.members || []).some((m) => String(m) === String(socket.userId));
+            const present = (ch.members || []).some(
+              (m) => String(m) === String(socket.userId)
+            );
             if (!present) {
               ch.members.push(socket.userId);
               await ch.save();
             }
           }
         }
-        io.to(room).emit("channel:members:updated", { channelId: String(channelId) });
+        io.to(room).emit("channel:members:updated", {
+          channelId: String(channelId),
+        });
       } catch (err) {
         console.error("[socket] channel:join handler error", err);
       }
     });
 
-    // --- channel leave ---
     socket.on("channel:leave", ({ channelId } = {}) => {
       if (!channelId) return;
       const room = getChannelRoom(channelId);
       socket.leave(room);
-      console.log(`[socket] ${socketId} left ${room} userId=${socket.userId || "anon"}`);
-      // Note: do not modify persistent membership here unless your API requires it.
-      // Broadcast members update so clients can refetch if needed.
-      io.to(room).emit("channel:members:updated", { channelId: String(channelId) });
+      console.log(
+        `[socket] ${socketId} left ${room} userId=${socket.userId || "anon"}`
+      );
+
+      io.to(room).emit("channel:members:updated", {
+        channelId: String(channelId),
+      });
     });
 
-    // --- typing indicators ---
     socket.on("typing:start", ({ channelId } = {}) => {
       if (!channelId) return;
       io.to(getChannelRoom(channelId)).emit("typing:started", {
@@ -202,13 +177,14 @@ export function initSocket(httpServer, options = {}) {
       });
     });
 
-    // --- message:new (persist + broadcast) ---
     socket.on("message:new", async (payload, ack) => {
       try {
         const { channelId, text, attachments, clientId } = payload || {};
         const senderId = socket.userId;
-        if (!senderId) return ack?.({ ok: false, error: "Unauthorized (socket)" });
-        if (!channelId) return ack?.({ ok: false, error: "channelId required" });
+        if (!senderId)
+          return ack?.({ ok: false, error: "Unauthorized (socket)" });
+        if (!channelId)
+          return ack?.({ ok: false, error: "channelId required" });
 
         const msg = await Message.create({
           channelId,
@@ -218,7 +194,10 @@ export function initSocket(httpServer, options = {}) {
           clientId: clientId || null,
         });
 
-        const populated = await msg.populate({ path: "senderId", select: "name" });
+        const populated = await msg.populate({
+          path: "senderId",
+          select: "name",
+        });
 
         const out = {
           _id: populated._id,
@@ -241,16 +220,18 @@ export function initSocket(httpServer, options = {}) {
       }
     });
 
-    // --- message edit ---
     socket.on("message:edit", async ({ messageId, text } = {}, ack) => {
       try {
         const userId = socket.userId;
-        if (!userId) return ack?.({ ok: false, error: "Unauthorized (socket)" });
-        if (!messageId) return ack?.({ ok: false, error: "messageId required" });
+        if (!userId)
+          return ack?.({ ok: false, error: "Unauthorized (socket)" });
+        if (!messageId)
+          return ack?.({ ok: false, error: "messageId required" });
 
         const msg = await Message.findById(messageId);
         if (!msg) return ack?.({ ok: false, error: "Message not found" });
-        if (String(msg.senderId) !== String(userId)) return ack?.({ ok: false, error: "Forbidden" });
+        if (String(msg.senderId) !== String(userId))
+          return ack?.({ ok: false, error: "Forbidden" });
 
         msg.text = text;
         msg.editedAt = new Date();
@@ -264,12 +245,13 @@ export function initSocket(httpServer, options = {}) {
       }
     });
 
-    // --- message delete ---
     socket.on("message:delete", async ({ messageId } = {}, ack) => {
       try {
         const userId = socket.userId;
-        if (!userId) return ack?.({ ok: false, error: "Unauthorized (socket)" });
-        if (!messageId) return ack?.({ ok: false, error: "messageId required" });
+        if (!userId)
+          return ack?.({ ok: false, error: "Unauthorized (socket)" });
+        if (!messageId)
+          return ack?.({ ok: false, error: "messageId required" });
 
         const msg = await Message.findById(messageId);
         if (!msg) return ack?.({ ok: false, error: "Message not found" });
@@ -283,7 +265,9 @@ export function initSocket(httpServer, options = {}) {
         msg.deleted = true;
         await msg.save();
 
-        io.to(getChannelRoom(msg.channelId)).emit("message:deleted", { messageId: msg._id });
+        io.to(getChannelRoom(msg.channelId)).emit("message:deleted", {
+          messageId: msg._id,
+        });
         return ack?.({ ok: true });
       } catch (err) {
         console.error("[socket] message:delete error", err);
@@ -291,16 +275,20 @@ export function initSocket(httpServer, options = {}) {
       }
     });
 
-    // --- disconnect cleanup ---
     socket.on("disconnect", (reason) => {
       if (socket.userId) {
         unregisterUserSocket(socket.userId, socket.id);
-        // unregisterUserSocket will emit presence:update(false) if this was last socket
       }
-      console.log("Socket disconnected:", socket.id, "userId:", socket.userId || "anon", "reason:", reason);
+      console.log(
+        "Socket disconnected:",
+        socket.id,
+        "userId:",
+        socket.userId || "anon",
+        "reason:",
+        reason
+      );
     });
 
-    // generic error handler
     socket.on("error", (err) => {
       console.warn("Socket error", err);
     });
@@ -310,16 +298,15 @@ export function initSocket(httpServer, options = {}) {
   return io;
 }
 
-/* ---------- helpers ---------- */
-
 function getChannelRoom(channelId) {
   return `channel_${channelId}`;
 }
 
-/* ---------- exports ---------- */
-
 export function getIO() {
-  if (!io) throw new Error("Socket.io not initialized. Call initSocket(server) first.");
+  if (!io)
+    throw new Error(
+      "Socket.io not initialized. Call initSocket(server) first."
+    );
   return io;
 }
 

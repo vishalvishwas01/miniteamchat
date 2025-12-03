@@ -14,7 +14,7 @@ const MessageSchema = new Schema(
         mimeType: String
       }
     ],
-    clientId: { type: String, default: null }, // optional client-provided temporary id
+    clientId: { type: String, default: null },
     editedAt: Date,
     deleted: { type: Boolean, default: false }
   },

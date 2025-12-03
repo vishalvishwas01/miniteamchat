@@ -1,99 +1,277 @@
-/mini-team-chat/                       <-- repo root
-├── README.md
-├── .env.example
-├── package.json                       <-- optional monorepo helper (scripts)
-├── server/                            <-- backend (Node, Express, Socket.IO, MongoDB)
-│   ├── package.json
-│   ├── tsconfig.json (optional if using TS)
-│   ├── .env
-│   ├── src/
-│   │   ├── index.js                   <-- entry: start server + socket
-│   │   ├── app.js                     <-- express app setup (routes, middleware)
-│   │   ├── config/
-│   │   │   ├── db.js                  <-- mongodb connection (mongoose)
-│   │   │   └── passport.js            <-- oauth2 / strategies (or auth helpers)
-│   │   ├── controllers/
-│   │   │   ├── authController.js
-│   │   │   ├── channelController.js
-│   │   │   └── messageController.js
-│   │   ├── models/
-│   │   │   ├── User.js
-│   │   │   ├── Channel.js
-│   │   │   └── Message.js
-│   │   ├── routes/
-│   │   │   ├── auth.routes.js
-│   │   │   ├── channels.routes.js
-│   │   │   └── messages.routes.js
-│   │   ├── services/
-│   │   │   ├── presenceService.js    <-- online/offline tracking
-│   │   │   └── paginationService.js
-│   │   ├── sockets/
-│   │   │   ├── index.js               <-- socket.io init + namespaces/rooms
-│   │   │   └── handlers/
-│   │   │       ├── messageHandler.js
-│   │   │       └── presenceHandler.js
-│   │   ├── middlewares/
-│   │   │   ├── authMiddleware.js      <-- JWT/session validation
-│   │   │   └── errorHandler.js
-│   │   └── utils/
-│   │       ├── jwt.js
-│   │       └── validators.js
-│   ├── tests/                         <-- optional unit/integration tests
-│   └── Dockerfile                     <-- optional for deployment
-│
-├── client/                            <-- frontend (Vite + React + Redux + Tailwind)
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── postcss.config.js
-│   ├── tailwind.config.js
-│   ├── public/
-│   │   └── index.html
-│   ├── src/
-│   │   ├── main.jsx                   <-- React entry, Redux store init, Router
-│   │   ├── App.jsx
-│   │   ├── api/
-│   │   │   ├── axiosInstance.js       <-- base API + auth interceptors
-│   │   │   └── authApi.js
-│   │   ├── redux/
-│   │   │   ├── store.js
-│   │   │   ├── slices/
-│   │   │   │   ├── authSlice.js
-│   │   │   │   ├── channelsSlice.js
-│   │   │   │   ├── messagesSlice.js
-│   │   │   │   └── presenceSlice.js
-│   │   ├── hooks/
-│   │   │   ├── useSocket.js
-│   │   │   └── useInfiniteMessages.js
-│   │   ├── pages/
-│   │   │   ├── Auth/
-│   │   │   │   ├── Login.jsx
-│   │   │   │   └── Signup.jsx
-│   │   │   └── Chat/
-│   │   │       ├── Workspace.jsx      <-- top-level chat layout
-│   │   │       └── ChannelView.jsx
-│   │   ├── components/
-│   │   │   ├── layout/
-│   │   │   │   ├── Sidebar.jsx        <-- channel list, create channel button
-│   │   │   │   ├── ChannelList.jsx
-│   │   │   │   └── Topbar.jsx
-│   │   │   ├── chat/
-│   │   │   │   ├── MessageList.jsx    <-- virtualized/infinite loader
-│   │   │   │   ├── MessageItem.jsx
-│   │   │   │   ├── MessageInput.jsx
-│   │   │   │   └── TypingIndicator.jsx (optional bonus)
-│   │   │   ├── common/
-│   │   │   │   ├── Avatar.jsx
-│   │   │   │   └── Modal.jsx
-│   │   │   └── ui/                    <-- small UI primitives or copied components
-│   │   ├── styles/
-│   │   │   └── globals.css
-│   │   └── utils/
-│   │       └── time.js                 <-- timestamp formatting
-│   └── Dockerfile
-│
-├── infra/                             <-- optional: deployment scripts
-│   ├── docker-compose.yml
-│   └── terraform/                     <-- or cloud setup notes
-└── docs/
-    ├── architecture.md
-    └── demo-instructions.md
+# Real-Time Chat System Low Level Design (LLD)
+
+## 1. System Overview
+
+A complete real-time chat system supporting:
+
+- Multi-channel messaging  
+- Private channel creation  
+- Join-request / approval workflow  
+- Real-time presence (online/offline tracking)    
+- Optimistic message sending  
+- Pagination + infinite scroll  
+- Role-based controls (creator-only actions)  
+- OAuth authentication  
+- WebSocket synchronization across all clients  
+
+---
+
+## 2. Low Level Design (LLD)
+
+### 2.1 Core Architecture
+
+#### **Client**
+
+- Built using **React + Redux Toolkit**
+- Handles UI, global state, optimistic updates
+- **Socket.IO client** for real-time events  
+- **REST API** for:
+  - Channel list
+  - Join requests
+  - Members list
+  - Pagination
+  - Message history
+
+#### **Server**
+
+- **Express.js REST API**
+- **MongoDB + Mongoose**
+- **Socket.IO** for:
+  - Messaging
+  - Presence
+  - Membership updates
+
+---
+
+### 2.2 Data Models
+
+#### **User**
+```json
+{
+  "_id": "ObjectId",
+  "name": "string",
+  "email": "string",
+  "avatarUrl": "string"
+}
+```
+#### **Channel**
+```json
+{
+  "_id": "ObjectId",
+  "name": "string",
+  "createdBy": "userId",
+  "isPrivate": true,
+  "members": ["userId"],
+  "pendingRequests": ["userId"]
+}
+```
+#### **Channel**
+```json
+{
+  "_id": "ObjectId",
+  "channelId": "ObjectId",
+  "senderId": "userId",
+  "text": "string",
+  "attachments": [],
+  "createdAt": "Date",
+  "editedAt": "Date",
+  "deleted": false,
+  "clientId": "string"
+}
+```
+
+## 2.3 REST Endpoints
+
+### Auth
+**POST** `/api/auth/login`  
+**POST** `/api/auth/logout`
+
+### Channels
+**GET** `/api/channels?mine=true`  
+**POST** `/api/channels`  
+**POST** `/api/channels/:id/join-request`  
+**POST** `/api/channels/:id/approve-request`  
+**POST** `/api/channels/:id/reject-request`  
+**POST** `/api/channels/:id/leave`  
+**DELETE** `/api/channels/:id`  
+**GET** `/api/channels/:id/members`  
+**POST** `/api/channels/:id/remove-member`  
+**GET** `/api/channels/search?q=term`
+
+### Messages
+**GET** `/api/messages?channelId=...&limit=30&before=<messageId>`  
+**POST** `/api/messages`  
+**PATCH** `/api/messages/:id`  
+**DELETE** `/api/messages/:id`
+
+
+## 2.4 Socket.IO Events
+
+### Client → Server
+- `channel:join`
+- `channel:leave`
+- `message:new`
+- `message:edit`
+- `message:delete`
+
+### Server → Client
+- `message:received`
+- `message:edited`
+- `message:deleted`
+- `presence:update``
+- `channel:members:updated`
+- `channel:joinRequest`
+- `channel:request:approved`
+- `channel:request:rejected`
+- `channel:member:left`
+- `channel:deleted`
+
+
+## 2.5 Real-Time Features
+
+### Presence Tracking
+- A user can have multiple active sockets.
+- First connection means they are online.
+- After the last socket disconnects, they are offline.
+
+
+## Optimistic Messaging
+
+- UI sends a message with a `clientId`.
+- When the server confirms, the optimistic message is replaced with the real one.
+
+---
+
+## Message Pagination
+
+- Load the latest 40 messages when entering a channel.
+- When scrolling to the top, load older messages using:  
+  `GET /api/messages?before=<firstMessageId>`
+- Keep the scroll position stable after loading more.
+
+
+## Client Folder Structure
+```pgsql
+client/
+│── src/
+│   ├── api/
+│   │   ├── axiosInstance.js
+│   │   ├── authApi.js
+│   │   └── messagesApi.js
+│   ├── components/
+│   │   ├── chat/
+│   │   │   ├── MessageList.jsx
+│   │   │   ├── MessageItem.jsx
+│   │   │   └── MessageInput.jsx
+│   │   ├── layout/
+│   │   │   ├── Sidebar.jsx
+│   │   │   ├── Topbar.jsx
+│   │   │   ├── RightPanel.jsx
+│   │   └── common/
+│   ├── hooks/
+│   │   ├── useSocket.js
+│   │   ├── useTyping.js
+│   ├── redux/
+│   │   ├── slices/
+│   │   │   ├── authSlice.js
+│   │   │   ├── messagesSlice.js
+│   │   │   ├── channelsSlice.js
+│   │   │   ├── presenceSlice.js
+│   │   │   └── typingSlice.js
+│   ├── utils/
+│   │   └── avatar.js
+│   ├── App.jsx
+│   ├── main.jsx
+│── package.json
+│── vite.config.js
+```
+## Server Folder Structure
+```pgsql
+server/
+│── src/
+│   ├── controllers/
+│   │   ├── authController.js
+│   │   ├── channelController.js
+│   │   └── messageController.js
+│   ├── middleware/
+│   │   └── authMiddleware.js
+│   ├── models/
+│   │   ├── User.js
+│   │   ├── Channel.js
+│   │   └── Message.js
+│   ├── routes/
+│   │   ├── auth.routes.js
+│   │   ├── channels.routes.js
+│   │   └── messages.routes.js
+│   ├── sockets/
+│   │   └── index.js
+│   ├── utils/
+│   │   ├── jwt.js
+│   ├── index.js
+│── package.json
+```
+# Server Setup
+
+```bash
+cd server
+npm install
+```
+#### Create .env
+```bash
+MONGO_URI=mongodb://localhost:27017/team-chat
+JWT_SECRET=your-secret
+CLIENT_ORIGIN=http://localhost:5173
+PORT=4000
+```
+
+#### Run:
+```bash
+npm start
+```
+
+# Client Setup
+
+```bash
+cd client
+npm install
+```
+#### Create .env
+```bash
+VITE_API_URL=http://localhost:4000/
+```
+
+#### Run:
+```bash
+npm run dev
+```
+
+## 4. How to Use the App
+
+- Signup/login based on jwt 
+- Create channels  
+- Search, join, and view pending requests  
+- Creator can approve or reject join requests  
+- Real-time chat  
+- Online and offline indicators   
+- Load older messages while scrolling  
+- Leave or delete channels  
+- remove or approve members
+- Creator can manage members
+
+## 5. Completed Features
+
+- Jwt login  
+- Slack-like interface  
+- Private channels  
+- Search channels  
+- Join requests with approval flow  
+- Leave channel  
+- Delete channel  
+- Remove members  
+- Real-time presence  
+- Optimistic messaging  
+- Infinite scroll with pagination  
+- Real-time message syncing  
+- Member panel syncing  
+- Correct message alignment  
+- Persistent MongoDB storage 

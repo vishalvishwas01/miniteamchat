@@ -1,19 +1,10 @@
-// client/src/hooks/useTyping.js
 import { useEffect, useRef, useCallback } from "react";
 import socketClient from "../lib/socketClient";
 import { useSelector } from "react-redux";
 
-/**
- * useTyping(channelId, opts)
- * returns { onInput } — call onInput from your input's onChange/onKeyUp handler
- *
- * Behavior:
- * - Emits "typing:start" once when user begins typing
- * - Emits "typing:stop" after idleTimeout ms of no input (default 2000ms)
- */
 export default function useTyping(channelId, opts = {}) {
   const idleTimeout = opts.idleTimeout ?? 2000;
-  const socketRef = socketClient; // module with .get()
+  const socketRef = socketClient;
   const typingRef = useRef({ started: false, timer: null });
   const me = useSelector((s) => s.auth.user) || {};
   const myId = me?._id || me?.id;
@@ -40,7 +31,6 @@ export default function useTyping(channelId, opts = {}) {
     }
   }, [channelId]);
 
-  // call this on each input event
   const onInput = useCallback(() => {
     if (!channelId) return;
     emitStart();
@@ -50,7 +40,6 @@ export default function useTyping(channelId, opts = {}) {
     }, idleTimeout);
   }, [emitStart, emitStop, idleTimeout, channelId]);
 
-  // clear on unmount
   useEffect(() => {
     return () => {
       try {

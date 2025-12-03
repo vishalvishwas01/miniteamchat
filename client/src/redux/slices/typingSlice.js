@@ -1,16 +1,5 @@
-// client/src/redux/slices/typingSlice.js
-import { createSlice } from "@reduxjs/toolkit";
 
-/**
- * typing state shape:
- * {
- *   byChannel: {
- *     [channelId]: {
- *       [userId]: { name, since: timestamp }
- *     }
- *   }
- * }
- */
+import { createSlice } from "@reduxjs/toolkit";
 
 const slice = createSlice({
   name: "typing",
@@ -19,7 +8,7 @@ const slice = createSlice({
   },
   reducers: {
     typingStarted(state, action) {
-      const { channelId, user } = action.payload; // user: { _id, name }
+      const { channelId, user } = action.payload; 
       if (!channelId || !user || !user._id) return;
       const cid = String(channelId);
       const uid = String(user._id);
@@ -33,7 +22,7 @@ const slice = createSlice({
       const uid = String(userId);
       if (!state.byChannel[cid]) return;
       delete state.byChannel[cid][uid];
-      // cleanup empty channel map
+      
       if (Object.keys(state.byChannel[cid]).length === 0) delete state.byChannel[cid];
     },
     clearChannelTyping(state, action) {
@@ -46,7 +35,7 @@ const slice = createSlice({
 export const { typingStarted, typingStopped, clearChannelTyping } = slice.actions;
 export default slice.reducer;
 
-// selector helper (not required but handy)
+
 export const selectTypingUsers = (state, channelId) => {
   const map = (state.typing && state.typing.byChannel && state.typing.byChannel[String(channelId)]) || {};
   return Object.keys(map).map((uid) => ({ _id: uid, name: map[uid].name, since: map[uid].since }));

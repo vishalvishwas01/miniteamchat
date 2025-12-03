@@ -1,10 +1,6 @@
-// src/utils/avatar.js
+
 import React from "react";
 
-/**
- * Small avatar helper that renders initials on colored bg.
- * Use AvatarFromName({ name, size })
- */
 export function AvatarFromName({ name = "U", size = 40 }) {
   const initials = (name || "U").split(" ").map((s) => s[0]).join("").slice(0,2).toUpperCase();
   const colors = ["bg-indigo-500","bg-emerald-500","bg-rose-500","bg-amber-500","bg-sky-500","bg-violet-500"];

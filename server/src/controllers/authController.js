@@ -2,10 +2,6 @@ import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import { signToken } from "../utils/jwt.js";
 
-/**
- * POST /api/auth/signup
- * body: { name, email, password }
- */
 export async function signup(req, res, next) {
   try {
     const { name, email, password } = req.body;
@@ -32,10 +28,6 @@ export async function signup(req, res, next) {
   }
 }
 
-/**
- * POST /api/auth/login
- * body: { email, password }
- */
 export async function login(req, res, next) {
   try {
     const { email, password } = req.body;
@@ -62,13 +54,8 @@ export async function login(req, res, next) {
   }
 }
 
-/**
- * GET /api/auth/me
- * Header: Authorization: Bearer <token>
- */
 export async function me(req, res, next) {
   try {
-    // authMiddleware attaches req.userId
     const userId = req.userId;
     if (!userId) return res.status(401).json({ error: "Unauthorized" });
 

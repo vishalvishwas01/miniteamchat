@@ -12,18 +12,19 @@ export default function App() {
   const { user, token } = useSelector((s) => s.auth);
   const [isInitialized, setIsInitialized] = React.useState(false);
 
-  // restore auth from localStorage on app start
   useEffect(() => {
     dispatch(loadFromLocal());
     setIsInitialized(true);
   }, [dispatch]);
 
-  // Initialize socket once token is available (hook handles internals)
   useSocket(token);
 
-  // Don't render routes until auth is initialized to prevent 401 on protected routes
   if (!isInitialized) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -34,7 +35,10 @@ export default function App() {
         path="/app/*"
         element={user ? <Workspace /> : <Navigate to="/login" replace />}
       />
-      <Route path="*" element={<Navigate to={user ? "/app" : "/login"} replace />} />
+      <Route
+        path="*"
+        element={<Navigate to={user ? "/app" : "/login"} replace />}
+      />
     </Routes>
   );
 }

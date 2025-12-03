@@ -1,4 +1,3 @@
-// client/src/hooks/useSocket.js
 import { useEffect, useRef } from "react";
 import socketClient from "../lib/socketClient";
 import { useDispatch, useSelector } from "react-redux";
@@ -20,15 +19,6 @@ import {
 } from "../redux/slices/channelsSlice";
 import { typingStarted, typingStopped } from "../redux/slices/typingSlice";
 
-/**
- * useSocket(token)
- *
- * - Initializes a shared socket client when token is present
- * - Attaches listeners once per socket lifecycle
- * - Auto-joins/leaves current channel
- * - Handles channel-level events (deleted, members updated, member left)
- * - Handles join-request flow (creator receives request, requester gets approved/rejected)
- */
 export default function useSocket(token) {
   const dispatch = useDispatch();
   const currentChannelId = useSelector((s) => s.channels.currentChannelId);
@@ -47,10 +37,7 @@ export default function useSocket(token) {
     const sock = socketClient.init(token);
     socketRef.current = sock;
 
-    // inside the big useEffect attaching listeners
-
     function onTypingStarted({ channelId, userId, userName }) {
-      // payload should include channelId and requester info
       if (!channelId || !userId) return;
       dispatch(
         typingStarted({
@@ -65,15 +52,12 @@ export default function useSocket(token) {
       dispatch(typingStopped({ channelId, userId }));
     }
 
-    // attach
     sock.on("typing:started", onTypingStarted);
     sock.on("typing:stopped", onTypingStopped);
 
-    // detach in cleanup
     sock.off("typing:started", onTypingStarted);
     sock.off("typing:stopped", onTypingStopped);
 
-    // --- Message handlers ---
     function onMessage(msg) {
       if (!msg) return;
       if (msg.channelId && typeof msg.channelId === "object") {
@@ -98,7 +82,6 @@ export default function useSocket(token) {
       dispatch(setPresence(p));
     }
 
-    // --- Channel handlers ---
     function onChannelDeleted({ channelId }) {
       if (!channelId) return;
       console.log("[useSocket] channel deleted:", channelId);
@@ -114,7 +97,6 @@ export default function useSocket(token) {
         const members = res?.data?.members || [];
         dispatch(updateChannelMembers({ channelId, members }));
 
-        // If the current user is viewing this channel but is no longer a member, force leave
         if (String(currentChannelId) === String(channelId)) {
           const present = members.some(
             (m) => String(m._id || m) === String(currentUserId)
@@ -144,12 +126,10 @@ export default function useSocket(token) {
       onMembersUpdated({ channelId });
     }
 
-    // --- Join-request handlers (creator & requester) ---
     function onJoinRequest(payload) {
-      // payload: { channelId, channelName, requester: { _id, name } }
       if (!payload) return;
       console.log("[useSocket] incoming join request", payload);
-      // If current user is the creator, add to incomingRequests list
+
       dispatch(
         addIncomingRequest({
           channelId: payload.channelId,
@@ -160,19 +140,15 @@ export default function useSocket(token) {
     }
 
     function onRequestApproved(payload) {
-      // payload: { channelId, userId }
       if (!payload) return;
       console.log("[useSocket] request approved:", payload);
 
       const { channelId, userId } = payload;
 
-      // If current user was the requester, refresh channels (so approved channel appears)
       if (String(currentUserId) === String(userId)) {
         dispatch(fetchChannelsThunk());
-        // Optionally notify the user
+
         try {
-          // small UI feedback
-          // eslint-disable-next-line no-alert
           alert(
             "Your join request was approved — channel added to your sidebar."
           );
@@ -180,33 +156,27 @@ export default function useSocket(token) {
         } catch (e) {}
       }
 
-      // remove from creator's incomingRequests if present
       dispatch(markRequestApproved({ channelId, userId }));
-      // also refresh members for that channel so creator sees update
+
       dispatch(fetchChannelsThunk());
     }
 
     function onRequestRejected(payload) {
-      // payload: { channelId, userId }
       if (!payload) return;
       console.log("[useSocket] request rejected:", payload);
       const { channelId, userId } = payload;
 
-      // If current user was the requester, optionally notify
       if (String(currentUserId) !== String(userId)) {
         try {
-          // eslint-disable-next-line no-alert
           alert("join request was rejected.");
         } catch (e) {}
       }
 
-      // remove pending from creator's list if present
       dispatch(removeIncomingRequest({ channelId, userId }));
-      // refresh search results or channels as needed
+
       dispatch(fetchChannelsThunk());
     }
 
-    // --- Attach listeners ---
     if (sock) {
       console.log("[useSocket] attaching listeners to socket", sock.id);
       sock.on("message:received", onMessage);
@@ -218,7 +188,6 @@ export default function useSocket(token) {
       sock.on("channel:members:updated", onMembersUpdated);
       sock.on("channel:member:left", onMemberLeft);
 
-      // join-request events
       sock.on("channel:joinRequest", onJoinRequest);
       sock.on("channel:request:approved", onRequestApproved);
       sock.on("channel:request:rejected", onRequestRejected);
@@ -243,7 +212,6 @@ export default function useSocket(token) {
     };
   }, [token, dispatch, currentChannelId, currentUserId]);
 
-  // join the currently selected channel when socket connects or when channel changes
   useEffect(() => {
     if (!currentChannelId) return;
 
